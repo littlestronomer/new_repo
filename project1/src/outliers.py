@@ -7,7 +7,6 @@ from scipy.stats import chi2
 
 
 def identify_outliers(X, method, alpha, variance):
-
     if method == "none":
         return np.zeros(len(X), dtype=bool)
 
