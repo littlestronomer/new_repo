@@ -16,9 +16,15 @@ from itertools import product
 from project1.src.outliers import get_outliers
 from project1.src.imputation import get_imputer
 from project1.src.scalers import get_scaler
+from project1.src.filter import get_filter
 from project1.src.selectors import get_selector
 from project1.src.models import get_model
 from project1.src.config import config
+
+import warnings
+
+warnings.filterwarnings("ignore", message=".*k2__noise_level.*lower bound.*")
+warnings.filterwarnings("ignore", message=".*k1__k2__alpha.*upper bound.*")
 
 # %% load and prepare data
 
@@ -39,6 +45,16 @@ X_test = X_test_raw.iloc[:, 1:]
 X_train = X_train_raw.iloc[:, 1:]
 y_train = y_train_raw.iloc[:, 1]
 
+# get non-unique columns
+non_constant = X_train.nunique() > 1
+
+# get almost uniform columns
+uniform_like = (X_train.kurt() < -0.7) & (X_train.skew().abs() < 0.1)
+
+# drop columns
+X_train = X_train.loc[:, non_constant & ~uniform_like]
+X_test = X_test.loc[:, non_constant & ~uniform_like]
+
 # create cv sets
 cv = RepeatedKFold(
     n_splits=config.n_splits, n_repeats=config.n_repeats, random_state=config.seed
@@ -46,41 +62,47 @@ cv = RepeatedKFold(
 splits = list(cv.split(X_train))
 
 # %% grids
+# grids
+
 outlier_options = [
     {"method": ["passthrough"]},
-    {"method": ["mahalanobis"], "alpha": [1e-4, 1e-2], "variance": [0.8]},
+    {"method": ["mahalanobis"], "alpha": [0.01], "variance": [0.8]},
 ]
+
 
 imputer_options = [
     {"method": ["median"]},
-    {"method": ["knn"], "n_neighbors": [5]},
+    {"method": ["knn"], "n_neighbors": [30]},
 ]
 
-scaler_options = [
-    {"method": ["standard", "robust"]},
+scaler_options = [{"method": ["robust"]}]
+
+filter_options = [
+    {"method": ["passthrough"]},
+    {"method": ["unsupervised"], "min_partner": [0.3, 0.5], "max_correlation": [0.99]},
 ]
 
 selector_options = [
-    {"method": ["kbest"], "k": [50, 100, 150, 200, 250, 300]},
-    {"method": ["lasso"], "alpha": [0.3, 1.0, 2.0]},
+    {"method": ["lasso"], "alpha": [0.03, 0.1]},
+    {"method": ["kbest"], "k": [180, 190, 200]},
 ]
 
 model_options = [
-    {"method": ["gpr"], "kernel": ["rbf"]},
-    {"method": ["gpr"], "kernel": ["matern"], "nu": [1.5, 2.5]},
+    {"method": ["gpr"], "kernel": ["matern"], "nu": [2.5]},
+    {"method": ["gpr"], "kernel": ["rq"]},
     {
         "method": ["krr"],
         "kernel": ["rbf"],
-        "alpha": [0.1, 1],
-        "gamma": [None, 3e-3, 1e-2, 3e-2],
+        "alpha": [0.003, 0.01, 0.03],
+        "gamma_mult": [2, 2.5, 3, 3.5],
     },
-    {"method": ["svr"], "kernel": ["rbf"], "C": [10, 50, 100], "epsilon": [0.01, 0.1]},
 ]
 
 # create grids
 outliers = list(ParameterGrid(outlier_options))
 scalers = list(ParameterGrid(scaler_options))
 imputers = list(ParameterGrid(imputer_options))
+filters = list(ParameterGrid(filter_options))
 selectors = list(ParameterGrid(selector_options))
 models = list(ParameterGrid(model_options))
 
@@ -89,6 +111,7 @@ n_fits = (
     len(outliers)
     * len(scalers)
     * len(imputers)
+    * len(filters)
     * len(selectors)
     * len(models)
     * len(splits)
@@ -108,7 +131,9 @@ for o in outliers:
     n_outliers = np.mean([m.sum() for m in mask_outliers])
 
     # scaler, imputer, selectors loop
-    for scaler, imputer, selector in product(scalers, imputers, selectors):
+    for scaler, imputer, filt, selector in product(
+        scalers, imputers, filters, selectors
+    ):
         folds = []
 
         # cv loop
@@ -119,6 +144,7 @@ for o in outliers:
             # build pipeline
             prep = Pipeline(
                 [
+                    ("filter", get_filter(**filt)),
                     ("scaler", get_scaler(**scaler)),
                     ("imputer", get_imputer(**imputer)),
                     ("selector", get_selector(**selector)),
@@ -134,7 +160,12 @@ for o in outliers:
         for m in models:
             # fit model
             scores = [
-                r2_score(y_val, get_model(**m).fit(Z_tr, y_tr).predict(Z_val))
+                r2_score(
+                    y_val,
+                    get_model(**m, n_features=Z_tr.shape[1])
+                    .fit(Z_tr, y_tr)
+                    .predict(Z_val),
+                )
                 for Z_tr, y_tr, Z_val, y_val in folds
             ]
 
@@ -147,11 +178,14 @@ for o in outliers:
                     "outliers": o,
                     "outliers_detected": n_outliers,
                     "scaler": scaler,
+                    "filter": filt,
                     "imputer": imputer,
                     "selector": selector,
                     "model": m,
                     "r2_mean": np.mean(scores),
                     "r2_std": np.std(scores),
+                    "r2_folds": scores,
+                    "n_features": folds[0][0].shape[1],
                 }
             )
 

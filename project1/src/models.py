@@ -1,5 +1,6 @@
 from operator import add
 from functools import reduce
+from project1.src.config import config
 
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.kernel_ridge import KernelRidge
@@ -13,6 +14,7 @@ from sklearn.gaussian_process.kernels import (
     DotProduct,
     Matern,
     WhiteKernel,
+    RationalQuadratic,
 )
 
 
@@ -26,16 +28,19 @@ def _standardize_y(regressor):
 def _build_gpr(
     kernel="rbf",
     nu=1.5,
+    rq_alpha=1.0,
     sigma_0=1.0,
-    length_scale=25.0,
-    noise=0.1,
-    noise_min=1e-5,
+    length_scale=10.0,
+    length_scale_bounds=(1.0, 1e3),
+    noise=0.3,
+    noise_bounds=(1e-3, 1e1),
     **params,
 ):
     # default parts
     parts = {
-        "rbf": RBF(length_scale),
-        "matern": Matern(length_scale, nu=nu),
+        "rbf": RBF(length_scale, length_scale_bounds),
+        "matern": Matern(length_scale, length_scale_bounds, nu=nu),
+        "rq": RationalQuadratic(length_scale, rq_alpha, length_scale_bounds),
         "linear": DotProduct(sigma_0=sigma_0),
     }
 
@@ -44,7 +49,8 @@ def _build_gpr(
 
     # assert all kernels available
     unknown = set(kernels) - parts.keys()
-    assert not unknown, f"Unknown GPR kernel {sorted(unknown)}"
+    if unknown:
+        raise ValueError(f"Unknown GPR kernel {sorted(unknown)}. Use {list(parts)}.")
 
     # build kernel and set defaults
     base = reduce(add, (parts[n] for n in kernels))
@@ -52,23 +58,24 @@ def _build_gpr(
     # set default parameters
     params.setdefault("normalize_y", True)
     params.setdefault("n_restarts_optimizer", 0)
-    params.setdefault("random_state", 8004)
+    params.setdefault("random_state", config.seed)
     return GaussianProcessRegressor(
-        kernel=ConstantKernel(1.0) * base
-        + WhiteKernel(noise, noise_level_bounds=(noise_min, 1e1)),
+        kernel=ConstantKernel(1.0) * base + WhiteKernel(noise, noise_bounds),
         **params,
     )
 
 
-def get_model(method="krr", **params):
+def get_model(method="krr", n_features=None, **params):
     if method == "linear":
         return LinearRegression()
     elif method == "ridge":
         return Ridge(**params)
     elif method == "krr":
         params.setdefault("kernel", "rbf")
+        params["gamma"] = params.pop("gamma_mult") / n_features
         return _standardize_y(KernelRidge(**params))
     elif method == "gpr":
+        params.setdefault("length_scale", (n_features / 3) ** 0.5)
         return _build_gpr(**params)
     elif method == "svr":
         params.setdefault("kernel", "rbf")
