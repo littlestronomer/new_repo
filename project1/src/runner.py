@@ -1,5 +1,8 @@
 import numpy as np
 import pandas as pd
+import hashlib
+import json
+import sklearn
 
 from datetime import datetime
 from tqdm import tqdm
@@ -17,6 +20,37 @@ from project1.src.selectors import get_selector
 from project1.src.models import get_model
 from project1.src.config import config
 from pathlib import Path
+
+
+def get_cache_context(X, y):
+    h = hashlib.sha256()
+
+    # hash data
+    h.update(pd.util.hash_pandas_object(X, index=True).values.tobytes())
+    h.update(pd.util.hash_pandas_object(y, index=True).values.tobytes())
+    h.update(str(list(X.columns)).encode())
+    h.update(str(list(X.dtypes)).encode())
+
+    # hash cv settings
+    h.update(str((
+        config.n_splits,
+        config.n_repeats,
+        config.seed,
+        sklearn.__version__,
+    )).encode())
+
+    # hash source code
+    for file in sorted(Path(__file__).parent.glob("*.py")):
+        h.update(file.name.encode())
+        h.update(file.read_bytes())
+
+    return h.hexdigest()
+
+
+def get_cache_key(context, *settings):
+    data = json.dumps([context, *settings], sort_keys=True, default=str)
+    return hashlib.sha256(data.encode()).hexdigest()
+
 
 def update_leaderboard(top_n=20):
     runs_dir = Path(__file__).resolve().parents[1] / "runs"
@@ -44,6 +78,7 @@ def update_leaderboard(top_n=20):
 
     return leaderboard
 
+
 def run_experiment(
     X_train,
     y_train,
@@ -70,6 +105,11 @@ def run_experiment(
         * len(splits)
     )
     print("Model fits:", n_fits)
+
+    # init cache
+    cache_dir = Path(__file__).resolve().parents[1] / "runs" / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    context = get_cache_context(X_train, y_train)
 
     # init loop
     out_file = "project1/runs/" + datetime.now().strftime("run_%Y%m%d_%H%M.csv")
@@ -109,16 +149,29 @@ def run_experiment(
 
             # modle loop
             for m in models:
-                # fit model
-                scores = [
-                    r2_score(
-                        y_val,
-                        get_model(**m, n_features=Z_tr.shape[1])
-                        .fit(Z_tr, y_tr)
-                        .predict(Z_val),
+                # check cache
+                key = get_cache_key(context, o, scaler, imputer, filt, selector, m)
+                cache_file = cache_dir / f"{key}.json"
+
+                if cache_file.exists():
+                    scores = json.loads(cache_file.read_text())["scores"]
+
+                else:
+                    # fit model
+                    scores = [
+                        r2_score(
+                            y_val,
+                            get_model(**m, n_features=Z_tr.shape[1])
+                            .fit(Z_tr, y_tr)
+                            .predict(Z_val),
+                        )
+                        for Z_tr, y_tr, Z_val, y_val in folds
+                    ]
+
+                    # save cache
+                    cache_file.write_text(
+                        json.dumps({"scores": [float(s) for s in scores]})
                     )
-                    for Z_tr, y_tr, Z_val, y_val in folds
-                ]
 
                 # update progress
                 pbar.update(len(splits))
@@ -150,4 +203,3 @@ def run_experiment(
     return pd.json_normalize(rows).sort_values(
         "r2_mean", ascending=False
     )
-
