@@ -78,9 +78,15 @@ def get_model(method="krr", n_features=None, **params):
         return Ridge(**params)
     elif method == "krr":
         params.setdefault("kernel", "rbf")
-        params["gamma"] = params.pop("gamma_mult") / n_features
+        if "gamma_mult" in params:
+            if n_features is None:
+                raise ValueError("KRR requires n_features for gamma_mult")
+            params["gamma"] = params.pop("gamma_mult") / n_features
         return _standardize_y(KernelRidge(**params))
+
     elif method == "gpr":
+        if n_features is None:
+            raise ValueError("GPR requires n_features")
         params.setdefault("length_scale", (n_features / 3) ** 0.5)
         return _build_gpr(**params)
     elif method == "svr":
