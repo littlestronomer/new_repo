@@ -3,6 +3,7 @@ from functools import reduce
 from project1.src.config import config
 
 from sklearn.compose import TransformedTargetRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.linear_model import Ridge, LinearRegression
 from sklearn.preprocessing import StandardScaler
@@ -16,7 +17,12 @@ from sklearn.gaussian_process.kernels import (
     WhiteKernel,
     RationalQuadratic,
 )
-
+from sklearn.ensemble import (
+    HistGradientBoostingRegressor,
+    ExtraTreesRegressor,
+    RandomForestRegressor,
+)
+from sklearn.linear_model import ElasticNet
 
 def _standardize_y(regressor):
     return TransformedTargetRegressor(
@@ -80,5 +86,13 @@ def get_model(method="krr", n_features=None, **params):
     elif method == "svr":
         params.setdefault("kernel", "rbf")
         return _standardize_y(SVR(**params))
+    elif method == "hgb":
+        return HistGradientBoostingRegressor(random_state=8004, **params)
+    elif method == "extra_trees":
+        return ExtraTreesRegressor(random_state=8004, n_jobs=-1, **params)
+    elif method == "random_forest":
+        return RandomForestRegressor(random_state=8004, n_jobs=-1, **params)
+    elif method == "elastic_net":
+        return _standardize_y(ElasticNet(max_iter=20000, **params))
     else:
         raise ValueError(f"Unknown model: {method}")

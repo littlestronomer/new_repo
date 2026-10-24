@@ -10,7 +10,6 @@ from sklearn.metrics import r2_score
 from sklearn.model_selection import ParameterGrid, RepeatedKFold
 from sklearn.pipeline import Pipeline
 
-
 from itertools import product
 
 from project1.src.outliers import get_outliers
