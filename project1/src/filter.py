@@ -3,6 +3,8 @@ import pandas as pd
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import FunctionTransformer
+from sklearn.feature_selection import VarianceThreshold
+from sklearn.pipeline import Pipeline
 
 
 class UnsupervisedFilter(BaseEstimator, TransformerMixin):
@@ -33,5 +35,13 @@ def get_filter(method="passthrough", **params):
         return FunctionTransformer()
     elif method == "unsupervised":
         return UnsupervisedFilter(**params)
+    elif method == "variance":
+        return VarianceThreshold(**params)
+    elif method == "combined":
+        steps = params["steps"]
+        return Pipeline([
+            (f"filter_{i}", get_filter(**step))
+            for i, step in enumerate(steps)
+        ])
     else:
         raise ValueError(f"Unknown filter: {method}")
