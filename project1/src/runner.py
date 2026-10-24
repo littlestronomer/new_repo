@@ -16,6 +16,33 @@ from project1.src.filter import get_filter
 from project1.src.selectors import get_selector
 from project1.src.models import get_model
 from project1.src.config import config
+from pathlib import Path
+
+def update_leaderboard(top_n=20):
+    runs_dir = Path(__file__).resolve().parents[1] / "runs"
+
+    frames = []
+
+    for file in runs_dir.glob("run_*.csv"):
+        df = pd.read_csv(file)
+
+        if not df.empty and "r2_mean" in df.columns:
+            frames.append(df.assign(run=file.stem))
+
+    if not frames:
+        return pd.DataFrame()
+
+    leaderboard = (
+        pd.concat(frames, ignore_index=True)
+        .sort_values("r2_mean", ascending=False)
+        .head(top_n)
+        .reset_index(drop=True)
+    )
+
+    leaderboard.insert(0, "rank", leaderboard.index + 1)
+    leaderboard.to_csv(runs_dir / "leaderboard.csv", index=False)
+
+    return leaderboard
 
 def run_experiment(
     X_train,
@@ -117,6 +144,7 @@ def run_experiment(
                 pbar.set_postfix(best=round(max(r["r2_mean"] for r in rows), 3))
 
             pd.json_normalize(rows).to_csv(out_file, index=False)
+            update_leaderboard(top_n=20)
 
     pbar.close()
     return pd.json_normalize(rows).sort_values(

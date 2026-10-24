@@ -83,7 +83,6 @@ def get_model(method="krr", n_features=None, **params):
                 raise ValueError("KRR requires n_features for gamma_mult")
             params["gamma"] = params.pop("gamma_mult") / n_features
         return _standardize_y(KernelRidge(**params))
-
     elif method == "gpr":
         if n_features is None:
             raise ValueError("GPR requires n_features")
