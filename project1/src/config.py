@@ -160,6 +160,24 @@ OPTIONS = {
             "n_estimators": [200, 500],
             "min_samples_leaf": [1, 3],
         },
+        "catboost": {
+            "method": ["catboost"],
+            "iterations": [300, 700],
+            "depth": [4, 6],
+            "learning_rate": [0.03, 0.1],
+        },
+        "lightgbm": {
+            "method": ["lightgbm"],
+            "n_estimators": [300, 700],
+            "num_leaves": [7, 15],
+            "learning_rate": [0.03, 0.1],
+        },
+        "xgboost": {
+            "method": ["xgboost"],
+            "n_estimators": [300, 700],
+            "max_depth": [3, 5],
+            "learning_rate": [0.03, 0.1],
+        },
     },
 }
 

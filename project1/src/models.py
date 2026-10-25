@@ -23,6 +23,9 @@ from sklearn.ensemble import (
     RandomForestRegressor,
 )
 from sklearn.linear_model import ElasticNet
+from catboost import CatBoostRegressor
+from lightgbm import LGBMRegressor
+from xgboost import XGBRegressor
 
 def _standardize_y(regressor):
     return TransformedTargetRegressor(
@@ -99,5 +102,24 @@ def get_model(method="krr", n_features=None, **params):
         return RandomForestRegressor(random_state=8004, n_jobs=-1, **params)
     elif method == "elastic_net":
         return _standardize_y(ElasticNet(max_iter=20000, **params))
+    elif method == "catboost":
+        params.setdefault("iterations", 500)
+        params.setdefault("random_seed", config.seed)
+        params.setdefault("thread_count", 2)
+        params.setdefault("verbose", False)
+        params.setdefault("allow_writing_files", False)
+        return CatBoostRegressor(**params)
+    elif method == "lightgbm":
+        params.setdefault("n_estimators", 500)
+        params.setdefault("random_state", config.seed)
+        params.setdefault("n_jobs", 2)
+        params.setdefault("verbosity", -1)
+        return LGBMRegressor(**params)
+    elif method == "xgboost":
+        params.setdefault("n_estimators", 500)
+        params.setdefault("random_state", config.seed)
+        params.setdefault("n_jobs", 2)
+        params.setdefault("tree_method", "hist")
+        return XGBRegressor(**params)
     else:
         raise ValueError(f"Unknown model: {method}")

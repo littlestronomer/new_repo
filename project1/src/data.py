@@ -21,11 +21,8 @@ def data():
     # get non-unique columns
     non_constant = X_train.nunique() > 1
 
-    # get almost uniform columns
-    uniform_like = (X_train.kurt() < -0.7) & (X_train.skew().abs() < 0.1)
-
     # drop columns
-    X_train = X_train.loc[:, non_constant & ~uniform_like]
-    X_test = X_test.loc[:, non_constant & ~uniform_like]
+    X_train = X_train.loc[:, non_constant]
+    X_test = X_test.loc[:, non_constant]
 
     return X_train, y_train, X_test, test_ids

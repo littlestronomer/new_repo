@@ -1,1 +1,4 @@
 *.csv
+!leaderboard.csv
+cache/
+*.log

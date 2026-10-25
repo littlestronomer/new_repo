@@ -17,35 +17,53 @@ X_train, y_train, X_test, test_ids = data()
 
 outlier_options = [
     {"method": ["passthrough"]},
-    {"method": ["mahalanobis"], "alpha": [0.01], "variance": [0.8]},
+    {"method": ["isolation_forest"], "contamination": [0.01]},
 ]
-
 
 imputer_options = [
     {"method": ["median"]},
-    {"method": ["knn"], "n_neighbors": [30]},
+    {"method": ["knn"], "n_neighbors": [15]},
 ]
 
-scaler_options = [{"method": ["robust"]}]
+scaler_options = [
+    {"method": ["robust"]},
+]
 
 filter_options = [
     {"method": ["passthrough"]},
-    {"method": ["unsupervised"], "min_partner": [0.3, 0.5], "max_correlation": [0.99]},
 ]
 
 selector_options = [
-    {"method": ["lasso"], "alpha": [0.03, 0.1]},
-    {"method": ["kbest"], "k": [180, 190, 200]},
+    {"method": ["passthrough"]},
+    {"method": ["tree"], "threshold": ["median"]},
 ]
 
 model_options = [
-    {"method": ["gpr"], "kernel": ["matern"], "nu": [2.5]},
-    {"method": ["gpr"], "kernel": ["rq"]},
+    # CatBoost
     {
-        "method": ["krr"],
-        "kernel": ["rbf"],
-        "alpha": [0.003, 0.01, 0.03],
-        "gamma_mult": [2, 2.5, 3, 3.5],
+        "method": ["catboost"],
+        "iterations": [350, 650],
+        "depth": [4, 6, 8],
+        "learning_rate": [0.035, 0.09],
+        "l2_leaf_reg": [3, 10],
+    },
+
+    # LightGBM
+    {
+        "method": ["lightgbm"],
+        "n_estimators": [350, 650],
+        "num_leaves": [7, 15, 31],
+        "learning_rate": [0.035, 0.09],
+        "min_child_samples": [10, 30],
+    },
+
+    # XGBoost
+    {
+        "method": ["xgboost"],
+        "n_estimators": [350, 650],
+        "max_depth": [3, 5, 7],
+        "learning_rate": [0.035, 0.09],
+        "min_child_weight": [1, 5],
     },
 ]
 
