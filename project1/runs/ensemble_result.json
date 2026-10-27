@@ -1,0 +1,29 @@
+{
+  "member_oof_r2": {
+    "tabpfn_lasso": 0.6613718871025432,
+    "tabpfn_tree": 0.6581490644757435,
+    "catboost_tree": 0.487773606013408,
+    "catboost_lasso": 0.4568061093301111,
+    "lightgbm_tree": 0.48814791188269935,
+    "lightgbm_lasso": 0.4464346638447416,
+    "xgboost_tree": 0.4887407331298923,
+    "xgboost_lasso": 0.4382365818868229
+  },
+  "blend_r2": 0.6655685788540853,
+  "simple_avg_r2": 0.5571862991459156,
+  "weights": {
+    "tabpfn_lasso": 0.5707,
+    "tabpfn_tree": 0.4293,
+    "catboost_tree": 0.0,
+    "catboost_lasso": 0.0,
+    "lightgbm_tree": 0.0,
+    "lightgbm_lasso": 0.0,
+    "xgboost_tree": 0.0,
+    "xgboost_lasso": 0.0
+  },
+  "outlier_setting": {
+    "method": "isolation_forest",
+    "contamination": 0.01,
+    "n_estimators": 200
+  }
+}

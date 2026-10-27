@@ -2,3 +2,6 @@
 .DS_Store
 .ruff_cache
 *__pycache__
+.env
+.zcode/
+project1/runs/finetune/

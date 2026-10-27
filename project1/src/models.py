@@ -121,5 +121,14 @@ def get_model(method="krr", n_features=None, **params):
         params.setdefault("n_jobs", 2)
         params.setdefault("tree_method", "hist")
         return XGBRegressor(**params)
+    elif method == "tabpfn":
+        from tabpfn import TabPFNRegressor
+
+        params.setdefault("random_state", config.seed)
+        params.setdefault("device", "auto")
+        if n_features is not None and n_features > 500:
+            # 832 features exceed the TabPFN v2.0 soft limit (TabPFN-2.5 allows 2000)
+            params.setdefault("ignore_pretraining_limits", True)
+        return TabPFNRegressor(**params)
     else:
         raise ValueError(f"Unknown model: {method}")

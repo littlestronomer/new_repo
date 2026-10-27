@@ -71,6 +71,10 @@ OPTIONS = {
 
     "filters": {
         "passthrough": {"method": ["passthrough"]},
+        "winsorize": {
+            "method": ["winsorize"],
+            "z_threshold": [10, 20],
+        },
         "variance": {
             "method": ["variance"],
             "threshold": [0.0, 1e-4],
@@ -177,6 +181,10 @@ OPTIONS = {
             "n_estimators": [300, 700],
             "max_depth": [3, 5],
             "learning_rate": [0.03, 0.1],
+        },
+        "tabpfn": {
+            "method": ["tabpfn"],
+            "n_estimators": [4, 8],
         },
     },
 }
